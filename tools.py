@@ -12,6 +12,7 @@ import scipy.ndimage.filters as filters
 import scipy.ndimage.measurements as measurements
 import scipy.ndimage.morphology as morphology
 import scipy.spatial as ssp
+import scipy.misc as misc
 import math
 import h5py
 import time
@@ -42,8 +43,11 @@ def get_from_hdf5(name,file,idx=None):
         img=f['img'].value
     f.close()
     return img
-
-def get_label(img,radius=20,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,mask=None):
+def ellipse(a,b):
+    xx,yy=npy.meshgrid(range(a),range(b))
+    ellarray=((xx-a/2.0)*2.0/a)**2+((yy-b/2.0)*2.0/b)**2
+    return ellarray<1
+def get_label(img,radius=20,selem=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2):
     '''
     Return the labeled image calculated from a radius disk
     :param img: input image
@@ -54,13 +58,20 @@ def get_label(img,radius=20,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigm
     :return: Labeled image
     '''
     #radius of the object to segment
-    selem = disk(radius)
+    if selem==None:
+        selem = disk(radius)
     if sigma:
         img=filters.gaussian_filter(img,sigma)
+    img = rank.enhance_contrast_percentile(img, disk(3), p0=0.5, p1=1)
+
     Seg = rank.threshold_percentile(img,selem,p0=p0)
-    Seg = morphology.binary_erosion(Seg,iterations=3)
-    Seg = morphology.binary_dilation(Seg,iterations=3)
-    labels, nr_objects  = mh.label(mask*Seg)
+    Seg = morphology.binary_fill_holes(Seg)
+    Seg = morphology.binary_erosion(Seg,iterations=iter)
+    Seg = morphology.binary_dilation(Seg,iterations=iter)
+    Seg = morphology.binary_fill_holes(Seg)
+
+
+    labels, nr_objects  = mh.label(Seg)
     #too big
     sizes = mh.labeled.labeled_size(labels)
     too_big = npy.where(sizes > max_size_th)
@@ -72,9 +83,9 @@ def get_label(img,radius=20,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigm
     labels = mh.labeled.remove_regions(labels, too_small)
 
     if seg:
-        return labels,mask*Seg
+        return labels,Seg
     return labels
-def get_mask(img,selem=None):
+def get_mask(img,selem=None,low_res=5):
     '''
     Get the mask of the lumens
     :param img: Input image
@@ -83,10 +94,13 @@ def get_mask(img,selem=None):
     '''
     if selem==None:
         selem=npy.ones((50,200))
-    mask = rank.median(img,selem)
+    tmp = misc.imresize(img,size=low_res)
+    mask = rank.median(tmp,selem)
     otsu = threshold_otsu(mask)
     thre=mask>otsu
-    return 1-thre
+    if thre.shape!=img.shape:
+        thre= misc.imresize(thre,img.shape,interp='nearest')
+    return thre
 def get_tree_center(seg,labels,mask=None):
     if mask==None:
         mask=npy.ones_like(labels)
@@ -130,12 +144,12 @@ def rgb2hsv(rgb):
 
         # remove NaN
         out[npy.isnan(out)] = 0
-
         return out
+
 def cal_angle(pt1,pt2):
     return npy.abs(math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1])))
-def get_next(kd,cur,center,orient=None,eps=45):
-    distance,candidat = kd.query(cur,k=9,p=1)
+def get_next(kd,cur,center,orient=None,eps=45,k=9):
+    distance,candidat = kd.query(cur,k=k,p=1)
     distance = distance[1::]
     candidat = candidat[1::]
     selecte=list()
@@ -143,7 +157,8 @@ def get_next(kd,cur,center,orient=None,eps=45):
     for i in range(candidat.shape[0]):
         if candidat[i]==center.shape[0]:
             return None
-        elif center[candidat[i]][1]>cur[1]:
+        #elif center[candidat[i]][1]>cur[1]:
+        elif center[candidat[i]][1]!=cur[1]:
             if orient!=None:
                 next=center[candidat[i]]
                 min=npy.abs(orient-cal_angle(cur,next))
@@ -167,17 +182,23 @@ def get_next(kd,cur,center,orient=None,eps=45):
 
 
     return center[candidat[idx],:],candidat[idx]
-imgo=get_image(5092)
-#imgo=get_from_hdf5('5110',os.getcwd()+'/tmp')
+#imgo=get_image(5102)
+#to_hdf5(imgo,'5102',os.getcwd()+'/tmp')
+imgo=get_from_hdf5('5106',os.getcwd()+'/tmp')
 if len(imgo.shape)==3:
     img=npy.sum(imgo,axis=2)/3
 else:
     img=imgo
 #img = img[:,0:5000]
 img=img.astype(npy.uint8)
-mask = get_mask(img)
-labels,Seg=get_label(img,seg=True,min_size_th=100,max_size_th=400,mask=mask)
-center,tree=get_tree_center(Seg,labels)
+mask = get_mask(img,selem=ellipse(100,20),low_res=50)
+#mask=npy.ones_like(img)
+
+#labels,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.1,iter=4)
+labels,Seg=get_label(img,seg=True,min_size_th=400,max_size_th=float('Inf'),radius=70,p0=0.5,iter=10,selem=ellipse(50,70))
+#labels2,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.9,iter=4)
+
+center,tree=get_tree_center(mask*Seg,mask*labels)
 
 
 
@@ -185,31 +206,34 @@ center,tree=get_tree_center(Seg,labels)
 checked=npy.zeros(center.shape[0])
 
 print 'debut'
-def get_all(cur,checked,alpha=0.8,eps=20):
-    Test=True
+def get_all(cur,checked,alpha=0.8,eps=20,k=9):
+    tmpcur = cur
+    Test=[True,True]
     plt.plot(cur[1],cur[0],'bo')
-    orientation=180
-    while Test:
-        try:
-            next,idx=get_next(tree,cur,center,orient=orientation,eps=eps)
-            if orientation==None:
-                orientation=cal_angle(cur,next)
-            else:
-                orientation=(1-alpha)*orientation+alpha*cal_angle(cur,next)
-            checked[idx]=1
-            plt.plot([cur[1],next[1]],[cur[0],next[0]],'g-')
-            plt.plot(next[1],next[0],'go')
-            cur=next
-            print orientation
-        except:
-            Test=False
+    orientation=[170,10]
+    for j in range(2):
+        cur=tmpcur
+        while Test[j]:
+            try:
+                next,idx=get_next(tree,cur,center,orient=orientation[j],eps=eps,k=k)
+                if orientation[j]==None:
+                    orientation[j]=cal_angle(cur,next)
+                else:
+                    orientation[j]=(1-alpha)*orientation[j]+alpha*cal_angle(cur,next)
+                    checked[idx]=1
+                plt.plot([cur[1],next[1]],[cur[0],next[0]],'g-')
+                plt.plot(next[1],next[0],'go')
+                cur=next
+                print orientation[j]
+            except:
+                Test[j]=False
 def onclick(evt,seg,labels,check,center,fig):
     num = labels[evt.ydata,evt.xdata]
     if num!=0:
         cur = measurements.center_of_mass(seg,labels,num)
         idx = npy.where((center[:,0]==cur[0])&(center[:,1]==cur[1]))
         check[idx]=1
-        get_all(cur,checked,alpha=0.1,eps=20)
+        get_all(cur,checked,alpha=0.2,eps=10,k=10)
         fig.canvas.draw()
 
 
@@ -219,5 +243,6 @@ fig = plt.figure()
 ax=fig.add_subplot(111)
 fig.canvas.mpl_connect('button_press_event', lambda evt,lab=labels,seg=Seg,fig=fig,check=checked,center=center:onclick(evt,seg,labels,check,center,fig))
 ax.imshow(imgo)
+ax.imshow(labels,alpha=0.3)
 plt.plot(center[:,1],center[:,0],'b.')
 plt.show()
