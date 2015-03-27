@@ -6,3 +6,5 @@ credentials.py
 credentials.pyc
 /omero_lib/sample/credentials.py
 /omerolib/sample/locals.py
+/img
+converter.py
