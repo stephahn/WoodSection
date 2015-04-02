@@ -15,17 +15,20 @@ import scipy.spatial as ssp
 import scipy.misc as misc
 import math
 import h5py
-import time
-
+from time import gmtime, strftime
+import logging
 from credentials import *
 
 cred = {'USERNAME':USERNAME,'PASSWORD':PASSWORD,'HOST':HOST,'PORT':PORT}
 
 def get_image(id,level=0):
-    with OmeroClient(cred['USERNAME'],cred['PASSWORD'],cred['HOST'],cred['PORT'],group=103) as client:
-        image=client.get_image(id)
-        info = image.get_info()
-        I=image.get_plane(level=level)[0]
+    try:
+        I = get_from_hdf5(str(id),os.getcwd()+'/tmp/')
+    except:
+        with OmeroClient(cred['USERNAME'],cred['PASSWORD'],cred['HOST'],cred['PORT'],group=103) as client:
+            image=client.get_image(id)
+            info = image.get_info()
+            I=image.get_plane(level=level)[0]
     return I
 def to_hdf5(array,name,file):
     '''
@@ -45,11 +48,12 @@ def get_from_hdf5(name,file,idx=None):
         img=f['img'][idx[0]:idx[2],idx[1]:idx[3],::]
     f.close()
     return img
-def ellipse(a,b):
+def ellipse(dim):
+    b,a = dim[0],dim[1]
     xx,yy=npy.meshgrid(range(a),range(b))
     ellarray=((xx-a/2.0)*2.0/a)**2+((yy-b/2.0)*2.0/b)**2
     return ellarray<1
-def get_label(img,radius=20,selem=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2):
+def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2):
     '''
     Return the labeled image calculated from a radius disk
     :param img: input image
@@ -60,13 +64,13 @@ def get_label(img,radius=20,selem=None,seg=False,max_size_th=1000,min_size_th=0,
     :return: Labeled image
     '''
     #radius of the object to segment
-    if selem==None:
-        selem = disk(radius)
+    if selemSeg==None:
+        selemSeg = disk(radius)
     if sigma:
         img=filters.gaussian_filter(img,sigma)
     img = rank.enhance_contrast_percentile(img, disk(3), p0=0.5, p1=1)
 
-    Seg = rank.threshold_percentile(img,selem,p0=p0)
+    Seg = rank.threshold_percentile(img,selemSeg,p0=p0)
     Seg = morphology.binary_fill_holes(Seg)
     Seg = morphology.binary_erosion(Seg,iterations=iter)
     Seg = morphology.binary_dilation(Seg,iterations=iter)
@@ -87,19 +91,25 @@ def get_label(img,radius=20,selem=None,seg=False,max_size_th=1000,min_size_th=0,
     if seg:
         return labels,Seg
     return labels
-def get_mask(img,selem=None,low_res=5):
+def get_mask(img,selemMask=None,low_res=0.5):
     '''
     Get the mask of the lumens
     :param img: Input image
     :param selem: A structuring element
     :return: the mask for the image
     '''
-    if selem==None:
-        selem=npy.ones((50,200))
-    tmp = misc.imresize(img,size=low_res)
-    mask = rank.median(tmp,selem)
+    if selemMask==None:
+        selemMask=npy.ones((50,200))
+    if low_res!=0:
+        tmp = misc.imresize(img,size=low_res)
+    else:
+        tmp=img
+
+    mask = rank.median(tmp,selemMask)
     otsu = threshold_otsu(mask)
-    thre=mask>otsu
+    thre=mask<otsu
+    if npy.sum(thre)<(thre.shape[0]*thre.shape[1])/2:
+        thre=mask>otsu
     if thre.shape!=img.shape:
         thre= misc.imresize(thre,img.shape,interp='nearest')
     return thre
@@ -186,9 +196,7 @@ def get_next(kd,cur,center,orient=None,eps=45,k=9):
         return None
 
 
-    return center[candidat[idx],:],candidat[idx]
-
-print 'debut'
+    return (center[candidat[idx],:],candidat[idx])
 def get_all(cur,checked,alpha=0.8,eps=20,k=9,ori_list=None):
     tmpcur = cur
     Test=[True,True]
@@ -230,66 +238,67 @@ def onclick(evt,seg,labels,check,center,fig):
         get_all(cur,check,alpha=0.2,eps=10,k=10)
         fig.canvas.draw()
 
-import scipy.signal as ss
 
-#get_all(checked,alpha=0.9,eps=45)
-#imgo=get_image(5222)
-#to_hdf5(imgo,'5222',os.getcwd()+'/tmp')
-imgo=get_from_hdf5('5222',os.getcwd()+'/tmp',idx=(0,10000,2000,20000))
-if len(imgo.shape)==3:
-    img=npy.sum(imgo,axis=2)/3
-else:
-    img=imgo
-#img = img[:,0:5000]
-img=img.astype(npy.uint8)
-mask = get_mask(img,selem=ellipse(100,20),low_res=50)
+if __name__ == '__main__':
+    import scipy.signal as ss
 
-#mask=npy.ones_like(img)
+    #get_all(checked,alpha=0.9,eps=45)
+    #imgo=get_image(5222)
+    #to_hdf5(imgo,'5222',os.getcwd()+'/tmp')
+    imgo=get_from_hdf5('5222',os.getcwd()+'/tmp',idx=(0,10000,2000,20000))
+    if len(imgo.shape)==3:
+        img=npy.sum(imgo,axis=2)/3
+    else:
+        img=imgo
+    #img = img[:,0:5000]
+    img=img.astype(npy.uint8)
+    mask = get_mask(img,selemMask=ellipse((100,20)),low_res=50)
 
-#labels,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.1,iter=4)
-labels,Seg=get_label(img,seg=True,min_size_th=400,max_size_th=float('Inf'),radius=70,p0=0.5,iter=10,selem=ellipse(50,70))
-#labels2,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.9,iter=4)
+    #mask=npy.ones_like(img)
 
-center,tree=get_tree_center(mask*Seg,mask*labels)
-checked=npy.zeros(center.shape[0])
+    #labels,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.1,iter=4)
+    labels,Seg=get_label(img,seg=True,min_size_th=400,max_size_th=float('Inf'),radius=70,p0=0.5,iter=10,selemSeg=ellipse((50,70)))
+    #labels2,Seg=get_label(img,seg=True,min_size_th=500,max_size_th=4000,mask=mask,radius=70,p0=0.9,iter=4)
+
+    center,tree=get_tree_center(mask*Seg,mask*labels)
+    checked=npy.zeros(center.shape[0])
 
 
 
-fig = plt.figure()
-ax=fig.add_subplot(111)
-fig.canvas.mpl_connect('button_press_event', lambda evt,lab=labels,seg=Seg,fig=fig,check=checked,center=center:onclick(evt,seg,labels,check,center,fig))
-ax.imshow(imgo)
-ax.imshow(labels,alpha=0.3)
-plt.plot(center[:,1],center[:,0],'b.')
-plt.show()
+    fig = plt.figure()
+    ax=fig.add_subplot(111)
+    fig.canvas.mpl_connect('button_press_event', lambda evt,lab=labels,seg=Seg,fig=fig,check=checked,center=center:onclick(evt,seg,labels,check,center,fig))
+    ax.imshow(imgo)
+    ax.imshow(labels,alpha=0.3)
+    plt.plot(center[:,1],center[:,0],'b.')
+    plt.show()
 
-'''
+    '''
 
-fig = plt.figure()
-ax=fig.add_subplot(111)
-ax.imshow(imgo)
-ax.imshow(labels,alpha=0.3)
-orientation = list()
-matrix = npy.zeros((center.shape[0],imgo.shape[1]))
-all_chain = list()
-for k in range(center.shape[0]):
-    i=-k
-    if checked[i]==0:
-        checked[i]=1
-        all_chain.append(get_all(center[i,:],checked,alpha=0.2,eps=10,k=10,ori_list=orientation))
-        plt.plot(center[i,1],center[i,0],'b.')
-print all_chain
-h, n =npy.histogram(npy.array(orientation).flatten(),bins=range(360))
-orientation = ss.medfilt(npy.array(orientation),kernel_size=3)
-m = npy.median(npy.array(orientation))
+    fig = plt.figure()
+    ax=fig.add_subplot(111)
+    ax.imshow(imgo)
+    ax.imshow(labels,alpha=0.3)
+    orientation = list()
+    matrix = npy.zeros((center.shape[0],imgo.shape[1]))
+    all_chain = list()
+    for k in range(center.shape[0]):
+        i=-k
+        if checked[i]==0:
+            checked[i]=1
+            all_chain.append(get_all(center[i,:],checked,alpha=0.2,eps=10,k=10,ori_list=orientation))
+            plt.plot(center[i,1],center[i,0],'b.')
+    print all_chain
+    h, n =npy.histogram(npy.array(orientation).flatten(),bins=range(360))
+    orientation = ss.medfilt(npy.array(orientation),kernel_size=3)
+    m = npy.median(npy.array(orientation))
 
-x = npy.arange(0,imgo.shape[0])
+    x = npy.arange(0,imgo.shape[0])
 
-y = x*math.tan(math.radians(m))+imgo.shape[0]/4
-plt.xlim((0,imgo.shape[1]))
+    y = x*math.tan(math.radians(m))+imgo.shape[0]/4
+    plt.xlim((0,imgo.shape[1]))
 
-plt.plot(y,x,'r')
-plt.show()
-
-'''
+    plt.plot(y,x,'r')
+    plt.show()
+    '''
 

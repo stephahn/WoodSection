@@ -8,3 +8,4 @@ credentials.pyc
 /omerolib/sample/locals.py
 /img
 converter.py
+*.pyc

@@ -1,4 +1,17 @@
 __author__ = 'Stephan'
 
-P_ANGOL = {'alpha' : 0.2,'eps':10,'k' :10, 'selemMX':1,'selemMY':10,'p0':0.5,'selemS':'ellipse','selemSX':50,'selemSY':70}
+DEFAULT = {'selemMask': {'ellipse':[100,20]}\
+           ,'low_res'  :  0.5\
+           ,'min_size_th' : 0\
+           ,'max_size_th' :10000\
+           ,'radius' : 70\
+           ,'p0' : 0.5\
+           ,'iter':10\
+           ,'selemSeg':{'ellipse':[50,70]}\
+           ,'eps' : 20\
+           ,'k' : 9\
+           ,'orient0':0\
+           ,'alpha':0.0
+           }
+
 
