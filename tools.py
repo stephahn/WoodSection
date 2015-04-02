@@ -29,6 +29,7 @@ def get_image(id,level=0):
             image=client.get_image(id)
             info = image.get_info()
             I=image.get_plane(level=level)[0]
+            to_hdf5(I,str(id),os.getcwd()+'/tmp')
     return I
 def to_hdf5(array,name,file):
     '''
