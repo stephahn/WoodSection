@@ -7,7 +7,6 @@ from PySide import QtCore
 from config import *
 import matplotlib.pyplot as plt
 from PIL import Image
-import deepzoom
 
 
 logging.basicConfig(filename=os.getcwd()+'/tmp/wood.log', level=logging.INFO,format='%(asctime)s.%(msecs)d %(levelname)s %(module)s - %(funcName)s: %(message)s',datefmt="%Y-%m-%d %H:%M:%S")
