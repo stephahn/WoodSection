@@ -11,7 +11,8 @@ DEFAULT = {'selemMask': {'ellipse':[100,20]}\
            ,'eps' : 20\
            ,'k' : 9\
            ,'orient0':0\
-           ,'alpha':0.0
+           ,'alpha':0.0\
+           ,'format':'.tif'
            }
 
 

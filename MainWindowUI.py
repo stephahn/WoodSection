@@ -50,7 +50,8 @@ class Main(Ui_MainWindow):
              {'name':'alpha','type':'float','value':self.wood.get_parameter('alpha'),'limits':(0,1),'step':0.1},
              {'name': 'Compute track', 'type': 'action'}]
             },
-            {'name':'Image ID','type':'int','value':self.wood.id}]
+            {'name':'Image ID','type':'int','value':self.wood.id},
+            {'name':'format','type':'list','values':['.tif','.png'],'value':'.tif'}]
         self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack)
     def change(self,param, changes,p):
         for param, change, data in changes:

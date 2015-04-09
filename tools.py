@@ -35,11 +35,11 @@ def get_image(id,level=0):
             to_hdf5(I,str(id),os.getcwd()+'/tmp')
     return I
     '''
-def get_image(id):
+def get_image(id,format='.tif'):
     '''
     Open a local file
     '''
-    return imread(os.getcwd()+'/data/'+str(id)+'.png')
+    return imread(os.getcwd()+'/data/'+str(id)+format)
 def to_hdf5(array,name,file):
     '''
     save data in a hdf5 file

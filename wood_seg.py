@@ -22,7 +22,7 @@ class Wood():
         self.parameter=DEFAULT
         self.id = id
         logging.info('Started wood')
-        self.Image = get_image(id)
+        self.Image = get_image(id,self.parameter['format'])
         self.index = npy.array([0,2000,0,2000])
 
         self.updateImg()
@@ -91,6 +91,8 @@ class Wood():
     def set_parameter(self,name,data):
         if name[0]=='Image ID':
             self.setImage(data)
+        elif name[0]=='format':
+            self.parameter[name[0]]=data
         elif name[1] == 'selemMask' or name[1] == 'selemSeg':
             if name[2]=='height':
                 self.parameter[name[1]][self.parameter[name[1]].keys()[0]][0]=data
@@ -102,7 +104,7 @@ class Wood():
         else:
             self.parameter[name[1]]=data
     def setImage(self,id):
-        self.Image=get_image(id)
+        self.Image=get_image(id,self.parameter['format'])
         self.id=id
         self.updateImg()
         self.initToShow()
