@@ -82,7 +82,7 @@ pg.setConfigOptions(useWeave=False)
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
-    B = Wood(5106)
+    B = Wood(1)
 
     A= QtGui.QMainWindow()
     window = Main(A,B)

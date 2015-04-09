@@ -1,10 +1,11 @@
 __author__ = 'Stephan'
 
 
-from omero_lib import OmeroClient
+#from omero_lib import OmeroClient #TMP WITHOUT OMERO
 import mahotas as mh
 from skimage.filter import rank,threshold_otsu
 from skimage.morphology import disk
+from skimage.io import imread
 import numpy as npy
 import matplotlib.pyplot as plt
 import os
@@ -21,7 +22,8 @@ import logging
 from credentials import *
 
 cred = {'USERNAME':USERNAME,'PASSWORD':PASSWORD,'HOST':HOST,'PORT':PORT}
-
+'''
+TMP WITHOUT OMERO
 def get_image(id,level=0):
     try:
         I = get_from_hdf5(str(id),os.getcwd()+'/tmp/')
@@ -32,6 +34,12 @@ def get_image(id,level=0):
             I=image.get_plane(level=level)[0]
             to_hdf5(I,str(id),os.getcwd()+'/tmp')
     return I
+    '''
+def get_image(id):
+    '''
+    Open a local file
+    '''
+    return imread(os.getcwd()+'/data/'+str(id)+'.png')
 def to_hdf5(array,name,file):
     '''
     save data in a hdf5 file
