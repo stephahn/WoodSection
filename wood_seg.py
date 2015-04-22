@@ -3,11 +3,12 @@ from tools import *
 import logging
 import os
 import numpy as npy
+
 from PySide import QtCore
 from config import *
 import matplotlib.pyplot as plt
 from PIL import Image
-
+from skimage import restoration
 
 logging.basicConfig(filename=os.getcwd()+'/tmp/wood.log', level=logging.INFO,format='%(asctime)s.%(msecs)d %(levelname)s %(module)s - %(funcName)s: %(message)s',datefmt="%Y-%m-%d %H:%M:%S")
 class Wood():
@@ -79,6 +80,8 @@ class Wood():
         self.Tile = (self.Tile-npy.min(self.Tile))*255.0/(npy.max(self.Tile)-npy.min(self.Tile))
         self.Tile = self.Tile.astype(npy.uint8)
         self.Tile = npy.transpose(self.Tile,axes=[1,0])
+        #self.Tile = restoration.denoise_bilateral(self.Tile,win_size=5,sigma_spatial=100,sigma_range=0.5)
+
 
     def initToShow(self):
         self.toShow = self.Tile.copy()
@@ -146,6 +149,7 @@ class CellRow(list):
         self.append(Lumen(x,y))
         self.wood=wood
         self.get_next_item(self.wood.get_parameter('orient0'))
+        self.profil = list()
     def get_next_item(self,orient):
         nextItem = get_next(self.wood.tree,(self[-1].line,self[-1].column),self.wood.center,orient=orient,eps=self.wood.get_parameter('eps'),k=self.wood.get_parameter('k'))
         if nextItem!=None:
@@ -156,6 +160,23 @@ class CellRow(list):
                 self.append(next)
                 orient = (1-self.wood.get_parameter('alpha'))*orient + self.wood.get_parameter('alpha')*angle
                 self.get_next_item(orient)
+    def get_profil(self):
+        img = restoration.denoise_tv_chambolle(self.wood.Tile, weight=0.5, multichannel=False,n_iter_max=20)
+        plt.imshow(img)
+        plt.show()
+        if len(self)>1:
+            prev = self[0]
+            for i in range(1,len(self)):
+                cur = self[i]
+                length = int(npy.hypot(cur.line-prev.line, cur.column-prev.column))
+                x, y = npy.linspace(prev.line,cur.line, length), npy.linspace(prev.column,cur.column, length)
+                self.profil.extend(img[x.astype(npy.int),y.astype(npy.int)])
+                prev=self[i]
+        plt.plot(self.profil)
+        plt.xlabel('Position [pixel]')
+        plt.ylabel('Intesities of pixels')
+        plt.title('Intensities of pixels along a path')
+        plt.show()
 
 
 
@@ -195,4 +216,8 @@ class Lumen():
 
 
 if __name__ == '__main__':
-    A = Wood(5222)
+    A = Wood(1)
+    A.computeMask()
+    A.computeSeg()
+    A.computeTrack()
+    A.cellsRows[0].get_profil()
