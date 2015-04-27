@@ -51,8 +51,9 @@ class Main(Ui_MainWindow):
              {'name': 'Compute track', 'type': 'action'}]
             },
             {'name':'Image ID','type':'int','value':self.wood.id},
-            {'name':'format','type':'list','values':['.tif','.png'],'value':'.tif'}]
-        self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack)
+            {'name':'format','type':'list','values':['.tif','.png'],'value':'.tif'},
+            {'name':'extract','type':'action'}]
+        self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack,self.extract)
     def change(self,param, changes,p):
         for param, change, data in changes:
             path = p.childPath(param)
@@ -72,7 +73,9 @@ class Main(Ui_MainWindow):
     def computeTrack(self):
         self.wood.computeTrack()
         self.graphicsView.add(self.wood.track,3)
-
+    def extract(self):
+        self.wood.extract_profil()
+        print "extract finish"
 
 
 

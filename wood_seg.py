@@ -3,7 +3,7 @@ from tools import *
 import logging
 import os
 import numpy as npy
-
+import pandas as pd
 from PySide import QtCore
 from config import *
 import matplotlib.pyplot as plt
@@ -81,7 +81,7 @@ class Wood():
         self.Tile = self.Tile.astype(npy.uint8)
         self.Tile = npy.transpose(self.Tile,axes=[1,0])
         #self.Tile = restoration.denoise_bilateral(self.Tile,win_size=5,sigma_spatial=100,sigma_range=0.5)
-
+        self.Tile = restoration.denoise_tv_chambolle(self.Tile, weight=0.5, multichannel=False,n_iter_max=20)
 
     def initToShow(self):
         self.toShow = self.Tile.copy()
@@ -96,6 +96,8 @@ class Wood():
             self.setImage(data)
         elif name[0]=='format':
             self.parameter[name[0]]=data
+        elif name[0]=='extract':
+            print "extract"
         elif name[1] == 'selemMask' or name[1] == 'selemSeg':
             if name[2]=='height':
                 self.parameter[name[1]][self.parameter[name[1]].keys()[0]][0]=data
@@ -138,6 +140,36 @@ class Wood():
         logging.info('Update parameter. New parameter values: %s',self.parameter)
         self.updateImg()
         self.initToShow()
+    def extract_profil(self):
+        #extract = dict()
+        count = 0
+        f = h5py.File(os.getcwd()+'/tmp/myfile.hdf5','w')
+        for i in range(len(self.cellsRows)):
+            if len(self.cellsRows[i])>1:
+                prev = self.cellsRows[i][0]
+
+                for j in range(1,len(self.cellsRows[i])):
+                    #extract[str(count)]=dict()
+                    grp = f.create_group(str(count))
+                    cur = self.cellsRows[i][j]
+                    length = int(npy.hypot(cur.line-prev.line, cur.column-prev.column))
+                    x, y = npy.linspace(prev.line,cur.line, length), npy.linspace(prev.column,cur.column, length)
+                    '''
+                    extract[str(count)]['value']=self.Tile[x.astype(npy.int),y.astype(npy.int)]
+                    extract[str(count)]['x0y0'] = [prev.line,prev.column]
+                    extract[str(count)]['x1y1'] = [cur.line,cur.column]
+                    '''
+                    grp.create_dataset('value',data=self.Tile[x.astype(npy.int),y.astype(npy.int)])
+                    grp.create_dataset('x0y0',data=[prev.line,prev.column])
+                    grp.create_dataset('x1y1',data=[cur.line,cur.column])
+                    prev =  self.cellsRows[i][j]
+
+
+                    #dset = pd.DataFrame.from_dict(extract)
+                    #dset.to_csv(os.getcwd()+'/tmp/mydata.csv',sep=';')
+                    count = count+1
+
+
 
 
 class CellRow(list):
@@ -161,22 +193,17 @@ class CellRow(list):
                 orient = (1-self.wood.get_parameter('alpha'))*orient + self.wood.get_parameter('alpha')*angle
                 self.get_next_item(orient)
     def get_profil(self):
-        img = restoration.denoise_tv_chambolle(self.wood.Tile, weight=0.5, multichannel=False,n_iter_max=20)
-        plt.imshow(img)
-        plt.show()
         if len(self)>1:
             prev = self[0]
             for i in range(1,len(self)):
                 cur = self[i]
                 length = int(npy.hypot(cur.line-prev.line, cur.column-prev.column))
                 x, y = npy.linspace(prev.line,cur.line, length), npy.linspace(prev.column,cur.column, length)
-                self.profil.extend(img[x.astype(npy.int),y.astype(npy.int)])
+                self.profil.extend(self.wood.Tile[x.astype(npy.int),y.astype(npy.int)])
                 prev=self[i]
-        plt.plot(self.profil)
-        plt.xlabel('Position [pixel]')
-        plt.ylabel('Intesities of pixels')
-        plt.title('Intensities of pixels along a path')
-        plt.show()
+
+
+
 
 
 
@@ -220,4 +247,4 @@ if __name__ == '__main__':
     A.computeMask()
     A.computeSeg()
     A.computeTrack()
-    A.cellsRows[0].get_profil()
+    A.extract_profil()

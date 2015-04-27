@@ -44,7 +44,7 @@ class ImageViewSimple(pg.ViewBox):
 class ParameterTreeSimple(pg.parametertree.ParameterTree):
     def __init__(self,parent):
         super(ParameterTreeSimple,self).__init__(parent)
-    def addParameter(self,params,changeParam,computeMask,computeSeg,computeTrack):
+    def addParameter(self,params,changeParam,computeMask,computeSeg,computeTrack,extract):
         p = pg.parametertree.Parameter.create(name='params', type='group', children=params)
         self.setParameters(p, showTop=False)
         p.sigTreeStateChanged.connect(lambda param,changes,par = p :changeParam(param,changes,par))
@@ -52,3 +52,4 @@ class ParameterTreeSimple(pg.parametertree.ParameterTree):
         p.param('Global Mask optimization', 'Compute mask').sigActivated.connect(computeMask)
         p.param('Segmentation optimization', 'Compute Seg').sigActivated.connect(computeSeg)
         p.param('Tracking optimization', 'Compute track').sigActivated.connect(computeTrack)
+        p.param('extract').sigActivated.connect(extract)
