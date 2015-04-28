@@ -10,9 +10,13 @@ DEFAULT = {'selemMask': {'ellipse':[100,20]}\
            ,'selemSeg':{'ellipse':[50,70]}\
            ,'eps' : 20\
            ,'k' : 9\
-           ,'orient0':0\
+           ,'orient0':90\
            ,'alpha':0.0\
-           ,'format':'.tif'
+           ,'UseMask':'yes'\
+           ,'VisualWidth':2000\
+           ,'VisualHeight':2000\
+           ,'FirstLine':0\
+           ,'FirstColumn':5000
            }
 
 

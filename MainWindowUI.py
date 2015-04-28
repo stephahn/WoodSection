@@ -1,5 +1,6 @@
 __author__ = 'Stephan'
 from  mainWindow2 import Ui_MainWindow
+import os
 from PySide import QtGui,QtCore
 import sys
 from wood_seg import Wood
@@ -14,10 +15,17 @@ class Main(Ui_MainWindow):
         self.graphicsView.add(self.wood.toShow,0)
         self.initParameter()
         self.machine = QtCore.QStateMachine()
+        self.connectAll()
+    def connectAll(self):
+        self.wood.speak.connect(self.updateView)
     def initParameter(self):
         '''
         Initialise parameters
         '''
+        params = self.getParams()
+        self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack,self.extract,self.saveParameter,self.loadParameter)
+    def getParams(self):
+
         params = [{
             'name':'Global Mask optimization','type':'group','children':
             [{'name': 'low_res', 'type': 'float', 'value': self.wood.get_parameter('low_res'), 'limits': (0,1), 'step': 0.1},
@@ -48,12 +56,20 @@ class Main(Ui_MainWindow):
              {'name':'k','type':'int','value':self.wood.get_parameter('k'),'limits':(1,20)},
              {'name':'orient0','type':'int','value':self.wood.get_parameter('orient0'),'limits':(0,360)},
              {'name':'alpha','type':'float','value':self.wood.get_parameter('alpha'),'limits':(0,1),'step':0.1},
-             {'name': 'Compute track', 'type': 'action'}]
+             {'name': 'Compute track', 'type': 'action'},
+             {'name':'tips','type':'int','value':self.wood.get_parameter('orient0')}]
             },
-            {'name':'Image ID','type':'int','value':self.wood.id},
-            {'name':'format','type':'list','values':['.tif','.png'],'value':'.tif'},
+            {'name':'options','type':'group','children':
+            [{'name':'UseMask','type':'list','values':['yes','no'],'value':self.wood.get_parameter('UseMask')},
+             {'name':'VisualWidth','type':'int','value':self.wood.get_parameter('VisualWidth')},
+             {'name':'VisualHeight','type':'int','value':self.wood.get_parameter('VisualHeight')},
+             {'name':'FirstLine','type':'int','value':self.wood.get_parameter('FirstLine')},
+             {'name':'FirstColumn','type':'int','value':self.wood.get_parameter('FirstColumn')}]},
+            {'name':'Image ID','type':'list','values':self.wood.listFile,'value':self.wood.listFile[0]},
+            {'name':'save Parameter','type':'action'},
+            {'name':'load Parameter','type':'action'},
             {'name':'extract','type':'action'}]
-        self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack,self.extract)
+        return params
     def change(self,param, changes,p):
         for param, change, data in changes:
             path = p.childPath(param)
@@ -73,9 +89,26 @@ class Main(Ui_MainWindow):
     def computeTrack(self):
         self.wood.computeTrack()
         self.graphicsView.add(self.wood.track,3)
+        self.treeWidget.setTip(int(self.wood.getTip()))
     def extract(self):
-        self.wood.extract_profil()
+        self.wood.launch_all_image()
         print "extract finish"
+    def saveParameter(self):
+        name, ok = QtGui.QInputDialog.getText(QtGui.QWidget(), 'Save Parameter', 'Give name to the file:')
+        self.wood.saveParameter(name)
+    def loadParameter(self):
+        name, ok = QtGui.QFileDialog.getOpenFileName(QtGui.QWidget(), 'Open file',os.getcwd()+'/parameter')
+        self.wood.loadParameter(name)
+        params=self.getParams()
+        self.treeWidget.clear()
+        self.treeWidget.addParameter(params,self.change,self.computeMask,self.computeSeg,self.computeTrack,self.extract,self.saveParameter,self.loadParameter)
+    @QtCore.Slot()
+    def updateView(self):
+        self.graphicsView.add(self.wood.toShow,0)
+        self.graphicsView.remove(1)
+        self.graphicsView.remove(2)
+        self.graphicsView.remove(3)
+
 
 
 
@@ -86,7 +119,7 @@ pg.setConfigOptions(useWeave=False)
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
 
-    B = Wood(1)
+    B = Wood()
 
     A= QtGui.QMainWindow()
     window = Main(A,B)

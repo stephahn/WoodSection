@@ -66,6 +66,11 @@
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionSwitch_image_part">
+   <property name="text">
+    <string>Switch zone</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

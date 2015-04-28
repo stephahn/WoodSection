@@ -1,5 +1,6 @@
 /tmp
 /data
+/dataOld
 /.idea
 locals.py
 locals.pyc

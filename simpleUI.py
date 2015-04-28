@@ -40,16 +40,26 @@ class ImageViewSimple(pg.ViewBox):
             map = pg.ColorMap(pos, color)
             lut = map.getLookupTable(0.0, 1.0, 256)
         return lut
+    def remove(self,idx):
+        if self.item[idx]!=0:
+            self.removeItem(self.item[idx])
+            self.item[idx]=0
 
 class ParameterTreeSimple(pg.parametertree.ParameterTree):
     def __init__(self,parent):
         super(ParameterTreeSimple,self).__init__(parent)
-    def addParameter(self,params,changeParam,computeMask,computeSeg,computeTrack,extract):
-        p = pg.parametertree.Parameter.create(name='params', type='group', children=params)
-        self.setParameters(p, showTop=False)
-        p.sigTreeStateChanged.connect(lambda param,changes,par = p :changeParam(param,changes,par))
+    def addParameter(self,params,changeParam,computeMask,computeSeg,computeTrack,extract,saveParam,loadParam):
+        self.p = pg.parametertree.Parameter.create(name='params', type='group', children=params)
+        for par in self.p.childs:
+            par.opts['expanded']=False
+        self.setParameters(self.p, showTop=False)
+        self.p.sigTreeStateChanged.connect(lambda param,changes,par = self.p :changeParam(param,changes,par))
 
-        p.param('Global Mask optimization', 'Compute mask').sigActivated.connect(computeMask)
-        p.param('Segmentation optimization', 'Compute Seg').sigActivated.connect(computeSeg)
-        p.param('Tracking optimization', 'Compute track').sigActivated.connect(computeTrack)
-        p.param('extract').sigActivated.connect(extract)
+        self.p.param('Global Mask optimization', 'Compute mask').sigActivated.connect(computeMask)
+        self.p.param('Segmentation optimization', 'Compute Seg').sigActivated.connect(computeSeg)
+        self.p.param('Tracking optimization', 'Compute track').sigActivated.connect(computeTrack)
+        self.p.param('extract').sigActivated.connect(extract)
+        self.p.param('save Parameter').sigActivated.connect(saveParam)
+        self.p.param('load Parameter').sigActivated.connect(loadParam)
+    def setTip(self,value):
+        self.p.param('Tracking optimization', 'tips').setValue(value)

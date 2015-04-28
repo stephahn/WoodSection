@@ -8,26 +8,32 @@ from PySide import QtCore
 from config import *
 import matplotlib.pyplot as plt
 from PIL import Image
+import json
 from skimage import restoration
 
 logging.basicConfig(filename=os.getcwd()+'/tmp/wood.log', level=logging.INFO,format='%(asctime)s.%(msecs)d %(levelname)s %(module)s - %(funcName)s: %(message)s',datefmt="%Y-%m-%d %H:%M:%S")
-class Wood():
+class Wood(QtCore.QObject):
     '''
     retrieve an image from Omero with the id.
     '''
-    def __init__(self,id):
+    speak = QtCore.Signal()
+    def __init__(self):
         '''
         retrieve the omero image from the id
         :param id: id of an image
         '''
+        self.listFile = [os.path.join(dp, f) for dp, dn, filenames in os.walk(os.getcwd()+'/data') for f in filenames if os.path.splitext(f)[1] == '.tif']
+        QtCore.QObject.__init__(self)
         self.parameter=DEFAULT
-        self.id = id
+        self.id = self.listFile[0]
         logging.info('Started wood')
-        self.Image = get_image(id,self.parameter['format'])
-        self.index = npy.array([0,2000,0,2000])
+        self.Image = get_image(self.id)
+        self.index = npy.array([self.parameter['FirstLine'],self.parameter['FirstLine']+self.parameter['VisualWidth'],\
+                                self.parameter['FirstColumn'],self.parameter['FirstColumn']+self.parameter['VisualHeight']])
 
         self.updateImg()
         self.initToShow()
+
 
         '''
         if len(self.Image.shape)==3:
@@ -59,7 +65,10 @@ class Wood():
                                        ,iter=self.get_parameter('iter')\
                                        ,selemSeg=self.get_parameter('selemSeg'))
     def computeTrack(self):
-        self.center,self.tree=get_tree_center(self.mask*self.Seg,self.mask*self.labels)
+        if self.parameter['UseMask']=='yes':
+            self.center,self.tree=get_tree_center(self.mask*self.Seg,self.mask*self.labels)
+        elif self.parameter['UseMask']=='no':
+            self.center,self.tree=get_tree_center(self.Seg,self.labels)
         self.cellsRows = list()
         self.selected = npy.zeros((self.center.shape[0],1))
         self.compute_Row()
@@ -75,6 +84,7 @@ class Wood():
 
     def updateImg(self):
         self.Tile = self.Image[self.index[0]:self.index[1],self.index[2]:self.index[3]]
+        print self.Tile.shape
         if len(self.Tile.shape)==3:
             self.Tile=npy.sum(self.Tile,axis=2)/3
         self.Tile = (self.Tile-npy.min(self.Tile))*255.0/(npy.max(self.Tile)-npy.min(self.Tile))
@@ -82,11 +92,14 @@ class Wood():
         self.Tile = npy.transpose(self.Tile,axes=[1,0])
         #self.Tile = restoration.denoise_bilateral(self.Tile,win_size=5,sigma_spatial=100,sigma_range=0.5)
         self.Tile = restoration.denoise_tv_chambolle(self.Tile, weight=0.5, multichannel=False,n_iter_max=20)
+    def updateIndex(self):
+        self.index = npy.array([self.parameter['FirstLine'],self.parameter['FirstLine']+self.parameter['VisualWidth'],\
+                                self.parameter['FirstColumn'],self.parameter['FirstColumn']+self.parameter['VisualHeight']])
 
     def initToShow(self):
         self.toShow = self.Tile.copy()
         self.mask = npy.zeros_like(self.toShow)
-        self.labels=npy.zeros_like(self.toShow)
+        self.labels = npy.zeros_like(self.toShow)
     def compute_Row(self):
         for i in range(self.center.shape[0]):
             if self.selected[i]==0:
@@ -94,10 +107,8 @@ class Wood():
     def set_parameter(self,name,data):
         if name[0]=='Image ID':
             self.setImage(data)
-        elif name[0]=='format':
-            self.parameter[name[0]]=data
-        elif name[0]=='extract':
-            print "extract"
+        elif name[0]=='extract' or name[0]=='save Parameter' or name[0]=='load Parameter':
+            print name[0]
         elif name[1] == 'selemMask' or name[1] == 'selemSeg':
             if name[2]=='height':
                 self.parameter[name[1]][self.parameter[name[1]].keys()[0]][0]=data
@@ -105,14 +116,20 @@ class Wood():
                 self.parameter[name[1]][self.parameter[name[1]].keys()[0]][1]=data
             elif name[2]=='shape':
                 self.parameter[name[1]][data]=self.parameter[name[1]].pop(self.parameter[name[1]].keys()[0])
-
+        elif name[1] in ['VisualWidth','VisualHeight','FirstLine','FirstColumn']:
+            self.parameter[name[1]]=data
+            self.updateIndex()
+            self.updateImg()
+            self.initToShow()
+            self.speak.emit()
         else:
             self.parameter[name[1]]=data
     def setImage(self,id):
-        self.Image=get_image(id,self.parameter['format'])
+        self.Image=get_image(id)
         self.id=id
         self.updateImg()
         self.initToShow()
+        self.speak.emit()
     def get_parameter(self,name,meta = False):
         '''
         return the value of a parameter translated.
@@ -140,28 +157,36 @@ class Wood():
         logging.info('Update parameter. New parameter values: %s',self.parameter)
         self.updateImg()
         self.initToShow()
+    def launch_all_image(self):
+        self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
+        self.updateImg()
+        #self.computeMask()
+        self.computeSeg()
+        self.computeTrack()
+        self.extract_profil()
     def extract_profil(self):
         #extract = dict()
         count = 0
-        f = h5py.File(os.getcwd()+'/tmp/myfile.hdf5','w')
+        value = list()
+        x_value = list()
+        y_value = list()
+        f = h5py.File(os.getcwd()+'/tmp/'+str(self.id)+'.hdf5','w')
         for i in range(len(self.cellsRows)):
             if len(self.cellsRows[i])>1:
                 prev = self.cellsRows[i][0]
-
                 for j in range(1,len(self.cellsRows[i])):
                     #extract[str(count)]=dict()
-                    grp = f.create_group(str(count))
                     cur = self.cellsRows[i][j]
                     length = int(npy.hypot(cur.line-prev.line, cur.column-prev.column))
                     x, y = npy.linspace(prev.line,cur.line, length), npy.linspace(prev.column,cur.column, length)
+                    value.extend(self.Tile[x.astype(npy.int),y.astype(npy.int)])
+                    x_value.extend(x.astype(npy.int))
+                    y_value.extend(y.astype(npy.int))
                     '''
                     extract[str(count)]['value']=self.Tile[x.astype(npy.int),y.astype(npy.int)]
                     extract[str(count)]['x0y0'] = [prev.line,prev.column]
                     extract[str(count)]['x1y1'] = [cur.line,cur.column]
                     '''
-                    grp.create_dataset('value',data=self.Tile[x.astype(npy.int),y.astype(npy.int)])
-                    grp.create_dataset('x0y0',data=[prev.line,prev.column])
-                    grp.create_dataset('x1y1',data=[cur.line,cur.column])
                     prev =  self.cellsRows[i][j]
 
 
@@ -169,9 +194,23 @@ class Wood():
                     #dset.to_csv(os.getcwd()+'/tmp/mydata.csv',sep=';')
                     count = count+1
 
+        f.create_dataset('value',data=value)
+        f.create_dataset('x',data=x_value)
+        f.create_dataset('y',data=y_value)
 
+    def saveParameter(self,name):
+        with open(os.getcwd()+'/parameter/'+name+'.json', 'wb') as fp:
+            json.dump(self.parameter,fp)
+    def loadParameter(self,name):
+        with open(name) as fp:
+            self.parameter = json.load(fp)
+    def getTip(self):
+        tip = list()
+        for cell in self.cellsRows:
+            if len(cell)>1:
+                    tip.append(cell.tipAngle[0]*1.0/cell.tipAngle[1])
 
-
+        return npy.median(tip)
 class CellRow(list):
     '''
     List of lumen
@@ -180,8 +219,10 @@ class CellRow(list):
         super(CellRow,self).__init__()
         self.append(Lumen(x,y))
         self.wood=wood
+        self.tipAngle=[self.wood.get_parameter('orient0'),1]
         self.get_next_item(self.wood.get_parameter('orient0'))
         self.profil = list()
+
     def get_next_item(self,orient):
         nextItem = get_next(self.wood.tree,(self[-1].line,self[-1].column),self.wood.center,orient=orient,eps=self.wood.get_parameter('eps'),k=self.wood.get_parameter('k'))
         if nextItem!=None:
@@ -192,6 +233,8 @@ class CellRow(list):
                 self.append(next)
                 orient = (1-self.wood.get_parameter('alpha'))*orient + self.wood.get_parameter('alpha')*angle
                 self.get_next_item(orient)
+                self.tipAngle[0]=self.tipAngle[0]+self[-1].MAngle
+                self.tipAngle[1]=self.tipAngle[1]+1
     def get_profil(self):
         if len(self)>1:
             prev = self[0]
@@ -224,7 +267,7 @@ class Lumen():
         pt1 = (self.line,self.column)
         pt2 = (other.line,other.column)
         angle = cal_angle(pt1,pt2)
-        if angle>180:
+        if angle>270:
             self.LAngle  = angle
             other.RAngle = angle
         else:

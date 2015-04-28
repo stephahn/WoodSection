@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'mainWindow2.ui'
 #
-# Created: Wed Apr 01 17:03:05 2015
+# Created: Tue Apr 28 17:48:23 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -43,12 +43,15 @@ class Ui_MainWindow(object):
         self.statusbar = QtGui.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
+        self.actionSwitch_image_part = QtGui.QAction(MainWindow)
+        self.actionSwitch_image_part.setObjectName("actionSwitch_image_part")
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "MainWindow", None, QtGui.QApplication.UnicodeUTF8))
+        self.actionSwitch_image_part.setText(QtGui.QApplication.translate("MainWindow", "Switch zone", None, QtGui.QApplication.UnicodeUTF8))
 
 from pyqtgraph import GraphicsView
 from simpleUI import ParameterTreeSimple, ImageViewSimple

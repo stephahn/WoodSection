@@ -35,11 +35,12 @@ def get_image(id,level=0):
             to_hdf5(I,str(id),os.getcwd()+'/tmp')
     return I
     '''
-def get_image(id,format='.tif'):
+def get_image(id):
     '''
     Open a local file
     '''
-    return imread(os.getcwd()+'/data/'+str(id)+format)
+    print id
+    return imread(id)
 def to_hdf5(array,name,file):
     '''
     save data in a hdf5 file
@@ -169,9 +170,9 @@ def rgb2hsv(rgb):
         return out
 
 def cal_angle(pt1,pt2):
-    angle = math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1]))+90
-    if angle>0:
-        angle=360-angle
+    angle = math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1]))+180
+    if angle>360:
+        angle=angle-360
     return npy.abs(angle)
 def get_next(kd,cur,center,orient=None,eps=45,k=9):
     distance,candidat = kd.query(cur,k=k,p=1)
