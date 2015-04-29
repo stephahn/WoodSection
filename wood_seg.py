@@ -91,7 +91,7 @@ class Wood(QtCore.QObject):
         self.Tile = self.Tile.astype(npy.uint8)
         self.Tile = npy.transpose(self.Tile,axes=[1,0])
         #self.Tile = restoration.denoise_bilateral(self.Tile,win_size=5,sigma_spatial=100,sigma_range=0.5)
-        self.Tile = restoration.denoise_tv_chambolle(self.Tile, weight=0.5, multichannel=False,n_iter_max=20)
+        self.Tile = restoration.denoise_tv_chambolle(self.Tile, weight=0.1, multichannel=False,n_iter_max=20)
     def updateIndex(self):
         self.index = npy.array([self.parameter['FirstLine'],self.parameter['FirstLine']+self.parameter['VisualWidth'],\
                                 self.parameter['FirstColumn'],self.parameter['FirstColumn']+self.parameter['VisualHeight']])
@@ -158,7 +158,7 @@ class Wood(QtCore.QObject):
         self.updateImg()
         self.initToShow()
     def launch_all_image(self):
-        #self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
+        self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
         self.updateImg()
         if self.parameter['UseMask']=='yes':
             self.computeMask()
@@ -166,38 +166,37 @@ class Wood(QtCore.QObject):
         self.computeTrack()
         self.extract_profil()
     def extract_profil(self):
-        #extract = dict()
-        count = 0
         value = list()
         x_value = list()
         y_value = list()
+        rows_number= list()
+        connections_number = list()
         f = h5py.File(os.getcwd()+'/tmp/'+os.path.splitext(os.path.basename(self.id))[0]+'.hdf5','w')
+        n_row = 0
+        n_connection = 0
         for i in range(len(self.cellsRows)):
             if len(self.cellsRows[i])>1:
                 prev = self.cellsRows[i][0]
                 for j in range(1,len(self.cellsRows[i])):
-                    #extract[str(count)]=dict()
                     cur = self.cellsRows[i][j]
                     length = int(npy.hypot(cur.line-prev.line, cur.column-prev.column))
                     x, y = npy.linspace(prev.line,cur.line, length), npy.linspace(prev.column,cur.column, length)
                     value.extend(self.Tile[x.astype(npy.int),y.astype(npy.int)])
+
                     x_value.extend(x.astype(npy.int))
                     y_value.extend(y.astype(npy.int))
-                    '''
-                    extract[str(count)]['value']=self.Tile[x.astype(npy.int),y.astype(npy.int)]
-                    extract[str(count)]['x0y0'] = [prev.line,prev.column]
-                    extract[str(count)]['x1y1'] = [cur.line,cur.column]
-                    '''
+                    rows_number.extend([n_row]*length)
+                    connections_number.extend([n_connection]*length)
+
                     prev =  self.cellsRows[i][j]
-
-
-                    #dset = pd.DataFrame.from_dict(extract)
-                    #dset.to_csv(os.getcwd()+'/tmp/mydata.csv',sep=';')
-                    count = count+1
+                    n_connection = n_connection+1
+                n_row=n_row+1
 
         f.create_dataset('value',data=value)
         f.create_dataset('x',data=x_value)
         f.create_dataset('y',data=y_value)
+        f.create_dataset('connection_number',data=connections_number)
+        f.create_dataset('row_number',data=rows_number)
 
     def saveParameter(self,name):
         with open(os.getcwd()+'/parameter/'+name+'.json', 'wb') as fp:
