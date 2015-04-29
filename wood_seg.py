@@ -158,9 +158,10 @@ class Wood(QtCore.QObject):
         self.updateImg()
         self.initToShow()
     def launch_all_image(self):
-        self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
+        #self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
         self.updateImg()
-        #self.computeMask()
+        if self.parameter['UseMask']=='yes':
+            self.computeMask()
         self.computeSeg()
         self.computeTrack()
         self.extract_profil()
@@ -170,7 +171,7 @@ class Wood(QtCore.QObject):
         value = list()
         x_value = list()
         y_value = list()
-        f = h5py.File(os.getcwd()+'/tmp/'+str(self.id)+'.hdf5','w')
+        f = h5py.File(os.getcwd()+'/tmp/'+os.path.splitext(os.path.basename(self.id))[0]+'.hdf5','w')
         for i in range(len(self.cellsRows)):
             if len(self.cellsRows[i])>1:
                 prev = self.cellsRows[i][0]
