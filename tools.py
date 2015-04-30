@@ -170,9 +170,9 @@ def rgb2hsv(rgb):
         return out
 
 def cal_angle(pt1,pt2):
-    angle = math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1]))+180
-    if angle>360:
-        angle=angle-360
+    angle = math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1]))+90
+    if angle>0:
+        angle=360-angle
     return npy.abs(angle)
 def get_next(kd,cur,center,orient=None,eps=45,k=9):
     distance,candidat = kd.query(cur,k=k,p=1)
@@ -254,15 +254,16 @@ if __name__ == '__main__':
     import scipy.signal as ss
 
     #get_all(checked,alpha=0.9,eps=45)
-    #imgo=get_image(5222)
+    imgo=get_image('data/4_P_angol_183_10x_1.tif')
     #to_hdf5(imgo,'5222',os.getcwd()+'/tmp')
-    imgo=get_from_hdf5('5222',os.getcwd()+'/tmp',idx=(0,10000,2000,20000))
+    #imgo=get_from_hdf5('5222',os.getcwd()+'/tmp',idx=(0,10000,2000,20000))
     if len(imgo.shape)==3:
         img=npy.sum(imgo,axis=2)/3
     else:
         img=imgo
     #img = img[:,0:5000]
-    img=img.astype(npy.uint8)
+    img=img.astype(npy.uint8)[0:2000,0:2000]
+    imgo = imgo[0:2000,0:2000]
     mask = get_mask(img,selemMask=ellipse((100,20)),low_res=50)
 
     #mask=npy.ones_like(img)
