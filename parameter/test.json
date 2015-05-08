@@ -1,0 +1,1 @@
+{"Compute mask": null, "p0": 0.5, "VisualWidth": 2000, "FirstLine": 0, "orient0": 90, "FirstColumn": 5000, "selemSeg": {"ellipse": [50, 70]}, "low_res": 0.5, "eps": 20, "iter": 10, "min_size_th": 0, "selemMask": {"ellipse": [100, 20]}, "radius": 70, "alpha": 0.0, "k": 9, "UseMask": "yes", "VisualHeight": 2000, "max_size_th": 10000}

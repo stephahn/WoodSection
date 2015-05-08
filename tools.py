@@ -170,9 +170,12 @@ def rgb2hsv(rgb):
         return out
 
 def cal_angle(pt1,pt2):
-    angle = math.degrees(npy.arctan2(pt1[0]-pt2[0],pt1[1]-pt2[1]))+90
-    if angle>0:
-        angle=360-angle
+    angle = math.degrees(npy.arctan2(pt2[0]-pt1[0],pt2[1]-pt1[1]))+90
+    if angle<0:
+        angle=360+angle
+    if angle>360:
+        angle = angle-360
+    print angle
     return npy.abs(angle)
 def get_next(kd,cur,center,orient=None,eps=45,k=9):
     distance,candidat = kd.query(cur,k=k,p=1)
@@ -246,7 +249,7 @@ def onclick(evt,seg,labels,check,center,fig):
         cur = measurements.center_of_mass(seg,labels,num)
         idx = npy.where((center[:,0]==cur[0])&(center[:,1]==cur[1]))
         check[idx]=1
-        get_all(cur,check,alpha=0.2,eps=10,k=10)
+        get_all(cur,check,alpha=0,eps=20,k=10)
         fig.canvas.draw()
 
 
@@ -262,8 +265,8 @@ if __name__ == '__main__':
     else:
         img=imgo
     #img = img[:,0:5000]
-    img=img.astype(npy.uint8)[0:2000,0:2000]
-    imgo = imgo[0:2000,0:2000]
+    img=img.astype(npy.uint8)[0:2000,2000:4000]
+    imgo = imgo[0:2000,2000:4000]
     mask = get_mask(img,selemMask=ellipse((100,20)),low_res=50)
 
     #mask=npy.ones_like(img)

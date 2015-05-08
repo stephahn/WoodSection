@@ -84,7 +84,6 @@ class Wood(QtCore.QObject):
 
     def updateImg(self):
         self.Tile = self.Image[self.index[0]:self.index[1],self.index[2]:self.index[3]]
-        print self.Tile.shape
         if len(self.Tile.shape)==3:
             self.Tile=npy.sum(self.Tile,axis=2)/3
         self.Tile = (self.Tile-npy.min(self.Tile))*255.0/(npy.max(self.Tile)-npy.min(self.Tile))
@@ -92,6 +91,7 @@ class Wood(QtCore.QObject):
         self.Tile = npy.transpose(self.Tile,axes=[1,0])
         #self.Tile = restoration.denoise_bilateral(self.Tile,win_size=5,sigma_spatial=100,sigma_range=0.5)
         self.Tile = restoration.denoise_tv_chambolle(self.Tile, weight=0.1, multichannel=False,n_iter_max=20)
+
     def updateIndex(self):
         self.index = npy.array([self.parameter['FirstLine'],self.parameter['FirstLine']+self.parameter['VisualWidth'],\
                                 self.parameter['FirstColumn'],self.parameter['FirstColumn']+self.parameter['VisualHeight']])
@@ -101,10 +101,12 @@ class Wood(QtCore.QObject):
         self.mask = npy.zeros_like(self.toShow)
         self.labels = npy.zeros_like(self.toShow)
     def compute_Row(self):
+        a=0
         for i in range(self.center.shape[0]):
             if self.selected[i]==0:
                 self.cellsRows.append(CellRow(self.center[i,:],self))
-                print len(self.cellsRows[-1])
+                a=a+len(self.cellsRows[-1])
+        print a*1.0/len(self.cellsRows)
     def set_parameter(self,name,data):
         if name[0]=='Image ID':
             self.setImage(data)
@@ -159,7 +161,7 @@ class Wood(QtCore.QObject):
         self.updateImg()
         self.initToShow()
     def launch_all_image(self):
-        #self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
+        self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
         self.updateImg()
         if self.parameter['UseMask']=='yes':
             self.computeMask()
@@ -210,8 +212,7 @@ class Wood(QtCore.QObject):
         for cell in self.cellsRows:
             if len(cell)>1:
                     tip.append(cell.tipAngle[0]*1.0/cell.tipAngle[1])
-        return 360
-        #return npy.median(tip) if npy.median(tip)
+        return npy.median(tip)
 class CellRow(list):
     '''
     List of lumen

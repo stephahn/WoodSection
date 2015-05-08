@@ -1,0 +1,1 @@
+{"p0": 0.6, "VisualWidth": 1000, "tips": 104, "FirstLine": 0, "orient0": 104, "FirstColumn": 1000, "selemSeg": {"ellipse": [20, 50]}, "low_res": 0.5, "eps": 20, "iter": 5, "min_size_th": 100, "Compute Seg": null, "selemMask": {"ellipse": [100, 20]}, "radius": 70, "alpha": 0.0, "k": 9, "UseMask": "no", "VisualHeight": 1000, "max_size_th": 2000, "Compute track": null}
