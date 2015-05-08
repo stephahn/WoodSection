@@ -102,11 +102,16 @@ class Wood(QtCore.QObject):
         self.labels = npy.zeros_like(self.toShow)
     def compute_Row(self):
         a=0
+        maxi=0
         for i in range(self.center.shape[0]):
             if self.selected[i]==0:
                 self.cellsRows.append(CellRow(self.center[i,:],self))
                 a=a+len(self.cellsRows[-1])
-        print a*1.0/len(self.cellsRows)
+                if len(self.cellsRows[-1])>20:
+                    maxi = maxi+1
+        print "mean",a*1.0/len(self.cellsRows)
+        print "maxi",maxi
+        print "total",len(self.cellsRows)
     def set_parameter(self,name,data):
         if name[0]=='Image ID':
             self.setImage(data)
@@ -128,6 +133,7 @@ class Wood(QtCore.QObject):
         else:
             self.parameter[name[1]]=data
     def setImage(self,id):
+        self.updateIndex()
         self.Image=get_image(id)
         self.id=id
         self.updateImg()

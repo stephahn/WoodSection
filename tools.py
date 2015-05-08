@@ -170,12 +170,11 @@ def rgb2hsv(rgb):
         return out
 
 def cal_angle(pt1,pt2):
-    angle = math.degrees(npy.arctan2(pt2[0]-pt1[0],pt2[1]-pt1[1]))+90
+    angle = math.degrees(npy.arctan2(pt2[0]-pt1[0],pt2[1]-pt1[1]))
     if angle<0:
         angle=360+angle
     if angle>360:
         angle = angle-360
-    print angle
     return npy.abs(angle)
 def get_next(kd,cur,center,orient=None,eps=45,k=9):
     distance,candidat = kd.query(cur,k=k,p=1)
