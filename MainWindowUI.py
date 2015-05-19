@@ -115,7 +115,7 @@ class Main(Ui_MainWindow):
         gc.collect()
         self.wood.speakProgress.emit({"msg":"ready","value":0,"max":100})
     def saveParameter(self):
-        name, ok = QtGui.QInputDialog.getText(QtGui.QWidget(), 'Save Parameter', 'Give name to the file:')
+        name, ok = QtGui.QInputDialog.getText(QtGui.QWidget(), 'Save Parameter', 'Give name to the file:',text=os.path.splitext(os.path.basename(self.wood.id))[0]+"_param")
         self.wood.saveParameter(name)
     def loadParameter(self):
         name, ok = QtGui.QFileDialog.getOpenFileName(QtGui.QWidget(), 'Open file',os.getcwd()+'/parameter')
