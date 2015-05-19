@@ -64,7 +64,7 @@ def ellipse(dim):
     xx,yy=npy.meshgrid(range(a),range(b))
     ellarray=((xx-a/2.0)*2.0/a)**2+((yy-b/2.0)*2.0/b)**2
     return ellarray<1
-def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2):
+def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2,signal=None):
     '''
     Return the labeled image calculated from a radius disk
     :param img: input image
@@ -79,26 +79,30 @@ def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th
         selemSeg = disk(radius)
     if sigma:
         img=filters.gaussian_filter(img,sigma)
+    signal.emit({"msg":'Segmentation:enhance constrast',"value":0,"max":100})
     img = rank.enhance_contrast_percentile(img, disk(3), p0=0.5, p1=1)
-
+    signal.emit({"msg":'Segmentation:threshold',"value":16})
     Seg = rank.threshold_percentile(img,selemSeg,p0=p0)
+    signal.emit({"msg":'Segmentation:morphology',"value":2*16})
     Seg = morphology.binary_fill_holes(Seg)
     Seg = morphology.binary_erosion(Seg,iterations=iter)
     Seg = morphology.binary_dilation(Seg,iterations=iter)
     Seg = morphology.binary_fill_holes(Seg)
 
-
+    signal.emit({"msg":'Segmentation:label',"value":3*16})
     labels, nr_objects  = mh.label(Seg)
     #too big
+    signal.emit({"msg":'Segmentation:delete big',"value":4*16})
     sizes = mh.labeled.labeled_size(labels)
     too_big = npy.where(sizes > max_size_th)
     labels = mh.labeled.remove_regions(labels, too_big)
 
     #too small
+    signal.emit({"msg":'Segmentation:delete small',"value":5*16})
     sizes = mh.labeled.labeled_size(labels)
     too_small = npy.where(sizes < min_size_th)
     labels = mh.labeled.remove_regions(labels, too_small)
-
+    signal.emit({"msg":'Segmentation finish',"value":100})
     if seg:
         return labels,Seg
     return labels

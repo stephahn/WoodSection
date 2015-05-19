@@ -12,3 +12,7 @@ credentials.pyc
 /figure
 converter.py
 *.pyc
+test.py
+/measure
+Wood.html
+ThreadPool.py

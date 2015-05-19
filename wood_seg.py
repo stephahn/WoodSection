@@ -9,7 +9,9 @@ from config import *
 import matplotlib.pyplot as plt
 from PIL import Image
 import json
+from Measure import Measure
 from skimage import restoration
+
 
 logging.basicConfig(filename=os.getcwd()+'/tmp/wood.log', level=logging.INFO,format='%(asctime)s.%(msecs)d %(levelname)s %(module)s - %(funcName)s: %(message)s',datefmt="%Y-%m-%d %H:%M:%S")
 class Wood(QtCore.QObject):
@@ -17,6 +19,7 @@ class Wood(QtCore.QObject):
     retrieve an image from Omero with the id.
     '''
     speak = QtCore.Signal()
+    speakProgress = QtCore.Signal(dict)
     def __init__(self):
         '''
         retrieve the omero image from the id
@@ -33,6 +36,7 @@ class Wood(QtCore.QObject):
 
         self.updateImg()
         self.initToShow()
+        self.measure = Measure()
 
 
         '''
@@ -63,7 +67,8 @@ class Wood(QtCore.QObject):
                                        ,radius=self.get_parameter('radius')\
                                        ,p0=self.get_parameter('p0')\
                                        ,iter=self.get_parameter('iter')\
-                                       ,selemSeg=self.get_parameter('selemSeg'))
+                                       ,selemSeg=self.get_parameter('selemSeg')
+                                        ,signal=self.speakProgress)
     def computeTrack(self):
         if self.parameter['UseMask']=='yes':
             self.center,self.tree=get_tree_center(self.mask*self.Seg,self.mask*self.labels)
@@ -73,7 +78,9 @@ class Wood(QtCore.QObject):
         self.selected = npy.zeros((self.center.shape[0],1))
         self.compute_Row()
         self.track = npy.zeros_like(self.Tile)
+        self.speakProgress.emit({'msg':'Track','value':0,"max":100})
         for i, cr in enumerate(self.cellsRows):
+            self.speakProgress.emit({'msg':'Track','value':i*100/(len(self.cellsRows)-1)})
             if len(cr)>1:
                 for j in range(1,len(cr)):
                     num = max(abs(int(cr[j-1].line)-int(cr[j].line)),abs(int(cr[j-1].column)-int(cr[j].column)))
@@ -81,6 +88,7 @@ class Wood(QtCore.QObject):
                     y=npy.linspace(npy.int(cr[j-1].column),npy.int(cr[j].column),num=num).astype(int)
                     for k in range(3):
                         self.track[x-k+1,y-k+1]=1
+        self.speakProgress.emit({'msg':'Track finish','value':100})
 
     def updateImg(self):
         self.Tile = self.Image[self.index[0]:self.index[1],self.index[2]:self.index[3]]
@@ -167,9 +175,11 @@ class Wood(QtCore.QObject):
         self.updateImg()
         self.initToShow()
     def launch_all_image(self):
+        self.speakProgress.emit({'msg':'Preparing data','value':0,'max':0})
         self.index = npy.array([0,self.Image.shape[0],0,self.Image.shape[1]])
         self.updateImg()
         if self.parameter['UseMask']=='yes':
+            self.speakProgress.emit({'msg':'Compute mask','value':0,'max':100})
             self.computeMask()
         self.computeSeg()
         self.computeTrack()

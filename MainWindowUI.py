@@ -6,18 +6,29 @@ import sys
 from wood_seg import Wood
 import pyqtgraph as pg
 from simpleUI import *
+from ThreadPool2 import Worker
+import copy
+
+
 
 class Main(Ui_MainWindow):
     def __init__(self,parent,wood):
         super(Main,self).__init__()
         self.setupUi(parent)
         self.wood=wood
+        self.copyWood=list()
+        self.progressBar = QtGui.QProgressBar()
+        self.progressBar.setAlignment(QtCore.Qt.AlignLeft)
+        self.statusbar.addPermanentWidget(self.progressBar)
+        self.statusbar.showMessage('Ready')
+        self.threadList=list()
         self.graphicsView.add(self.wood.toShow,0)
         self.initParameter()
-        self.machine = QtCore.QStateMachine()
         self.connectAll()
     def connectAll(self):
         self.wood.speak.connect(self.updateView)
+        self.wood.speakProgress.connect(self.updateBar)
+        self.actionLaunch.triggered.connect(lambda: self.wood.measure.launch_measure(self.wood.speakProgress))
     def initParameter(self):
         '''
         Initialise parameters
@@ -81,9 +92,11 @@ class Main(Ui_MainWindow):
         self.wood.set_parameter(childName,data)
         self.graphicsView.add(self.wood.toShow,0)
     def computeMask(self):
+
         self.wood.computeMask()
         self.graphicsView.add(self.wood.mask,1)
     def computeSeg(self):
+
         self.wood.computeSeg()
         self.graphicsView.add(self.wood.labels,2)
     def computeTrack(self):
@@ -91,8 +104,16 @@ class Main(Ui_MainWindow):
         self.graphicsView.add(self.wood.track,3)
         self.treeWidget.setTip(int(self.wood.getTip()))
     def extract(self):
-        self.wood.launch_all_image()
-        print "extract finish"
+        self.copyWood.append(copy.copy(self.wood))
+        self.threadList.append( Worker(func=self.copyWood[-1].launch_all_image))
+        self.threadList[-1].end.connect(self.finished)
+        self.threadList[-1].start()
+    def finished(self):
+        import gc
+        self.threadList=list()
+        self.copyWood=list()
+        gc.collect()
+        self.wood.speakProgress.emit({"msg":"ready","value":0,"max":100})
     def saveParameter(self):
         name, ok = QtGui.QInputDialog.getText(QtGui.QWidget(), 'Save Parameter', 'Give name to the file:')
         self.wood.saveParameter(name)
@@ -108,6 +129,12 @@ class Main(Ui_MainWindow):
         self.graphicsView.remove(1)
         self.graphicsView.remove(2)
         self.graphicsView.remove(3)
+    @QtCore.Slot()
+    def updateBar(self,msg):
+        self.statusbar.showMessage(msg['msg'])
+        self.progressBar.setValue(msg['value'])
+        if 'max' in msg:
+            self.progressBar.setMaximum(msg['max'])
 
 
 
@@ -122,10 +149,13 @@ if __name__ == '__main__':
     B = Wood()
 
     A= QtGui.QMainWindow()
+    #workPool.append_work(Work(Main,[A,B]))
     window = Main(A,B)
+
     #view = ImageViewSimple(window.graphicsView)
 
     #A = pg.image(B.Image)
 
     A.show()
+    app.processEvents()
     app.exec_()

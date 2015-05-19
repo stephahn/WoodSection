@@ -64,11 +64,23 @@
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuMeasure">
+    <property name="title">
+     <string>Tool</string>
+    </property>
+    <addaction name="actionLaunch"/>
+   </widget>
+   <addaction name="menuMeasure"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSwitch_image_part">
    <property name="text">
     <string>Switch zone</string>
+   </property>
+  </action>
+  <action name="actionLaunch">
+   <property name="text">
+    <string>Launch Measure</string>
    </property>
   </action>
  </widget>
