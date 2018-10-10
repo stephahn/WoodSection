@@ -3,7 +3,7 @@ __author__ = 'Stephan'
 
 #from omero_lib import OmeroClient #TMP WITHOUT OMERO
 import mahotas as mh
-from skimage.filter import rank,threshold_otsu
+from skimage.filters import rank,threshold_otsu
 from skimage.morphology import disk
 from skimage.io import imread
 import numpy as npy
@@ -64,7 +64,7 @@ def ellipse(dim):
     xx,yy=npy.meshgrid(range(a),range(b))
     ellarray=((xx-a/2.0)*2.0/a)**2+((yy-b/2.0)*2.0/b)**2
     return ellarray<1
-def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2,signal=None):
+def get_label(img,radius=20,selemSeg=npy.empty([1]),seg=False,max_size_th=1000,min_size_th=0,p0=0.7,sigma=None,iter=2,signal=None):
     '''
     Return the labeled image calculated from a radius disk
     :param img: input image
@@ -75,7 +75,7 @@ def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th
     :return: Labeled image
     '''
     #radius of the object to segment
-    if selemSeg==None:
+    if npy.size(selemSeg)==1:
         selemSeg = disk(radius)
     if sigma:
         img=filters.gaussian_filter(img,sigma)
@@ -106,14 +106,14 @@ def get_label(img,radius=20,selemSeg=None,seg=False,max_size_th=1000,min_size_th
     if seg:
         return labels,Seg
     return labels
-def get_mask(img,selemMask=None,low_res=0.5):
+def get_mask(img,selemMask=npy.empty([1]),low_res=0.5):
     '''
     Get the mask of the lumens
     :param img: Input image
     :param selem: A structuring element
     :return: the mask for the image
     '''
-    if selemMask==None:
+    if npy.size(selemMask)==1:
         selemMask=npy.ones((50,200))
     if low_res!=0:
         tmp = misc.imresize(img,size=low_res)
@@ -122,14 +122,14 @@ def get_mask(img,selemMask=None,low_res=0.5):
 
     mask = rank.median(tmp,selemMask)
     otsu = threshold_otsu(mask)
-    thre=mask<otsu
+    thre=(mask<otsu).astype(npy.uint8)
     if npy.sum(thre)<(thre.shape[0]*thre.shape[1])/2:
-        thre=mask>otsu
+        thre=(mask>otsu).astype(npy.uint8)
     if thre.shape!=img.shape:
         thre= misc.imresize(thre,img.shape,interp='nearest')
     return thre
-def get_tree_center(seg,labels,mask=None):
-    if mask==None:
+def get_tree_center(seg,labels,mask=npy.empty([1])):
+    if npy.size(mask) == 1:
         mask=npy.ones_like(labels)
     center = mh.center_of_mass(mask*seg,labels=mask*labels)
     center = center[~npy.isnan(center).any(axis=1)]#delete line with nan value.

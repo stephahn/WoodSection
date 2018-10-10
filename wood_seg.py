@@ -31,6 +31,8 @@ class Wood(QtCore.QObject):
         self.id = self.listFile[0]
         logging.info('Started wood')
         self.Image = get_image(self.id)
+        self.Image = self.Image*1.0/self.Image.max()
+
         self.index = npy.array([self.parameter['FirstLine'],self.parameter['FirstLine']+self.parameter['VisualWidth'],\
                                 self.parameter['FirstColumn'],self.parameter['FirstColumn']+self.parameter['VisualHeight']])
 
@@ -304,7 +306,7 @@ class Lumen():
 
 
 if __name__ == '__main__':
-    A = Wood(1)
+    A = Wood()
     A.computeMask()
     A.computeSeg()
     A.computeTrack()

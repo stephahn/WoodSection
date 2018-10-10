@@ -16,7 +16,7 @@ DEFAULT = {'selemMask': {'ellipse':[100,20]}\
            ,'VisualWidth':2000\
            ,'VisualHeight':2000\
            ,'FirstLine':0\
-           ,'FirstColumn':5000
+           ,'FirstColumn':0
            }
 
 
